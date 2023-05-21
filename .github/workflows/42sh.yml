@@ -1,0 +1,47 @@
+name: 42sh
+
+on:
+  pull_request:
+
+env:
+  EXECUTABLES: 42sh
+
+jobs:
+  check_coding_style:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/epitech/coding-style-checker:latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Check coding style
+      run: check.sh $(pwd) $(pwd)
+    - name: Display annotations errors
+      run: |
+        if [ -s $(pwd)/coding-style-reports.log ]; then
+          while read ligne; do
+            echo "$ligne" | sed 's/\(.*\):\([0-9]*\): \(.*\):\([^-]*\)-\(.*\)/::error file=\1,line=\2,title=\3 coding style error::\4-\5/'
+          done < $(pwd)/coding-style-reports.log
+          exit 1
+        fi
+  check_program_compilation:
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Make
+        run: make
+        timeout-minutes: 2
+      - name: Make clean
+        run: make clean
+      - name: Check executables
+        run: |
+          EXEC_ARRAY=( $(echo "${{ env.EXECUTABLES }}" | tr ',' ' ') )
+          for executable in "${EXEC_ARRAY[@]}"; do
+            if [ ! -x "$executable" ]; then
+              echo "::error The executable file $executable does not exist or is not executable"
+              exit 1
+            fi
+          done
